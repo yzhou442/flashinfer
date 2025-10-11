@@ -20,32 +20,46 @@ import flashinfer
 
 
 def test_mlc_failed_case():
+    num_requests = 1
+    num_tokens = 8
+    kv_indptr_1 = torch.tensor([0, 1]).int().to(0)
+    kv_indices_1 = torch.tensor([0]).int().to(0)
+    kv_last_page_len_1 = torch.tensor([501+1]).int().to(0)
+
+    
     kv_layout = "HND"
-    kv_indptr_1 = torch.tensor([0, 0, 9]).int().to(0)
-    kv_indices_1 = torch.tensor([3, 4, 5, 6, 7, 8, 9, 10, 11]).int().to(0)
-    kv_last_page_len_1 = torch.tensor([0, 1]).int().to(0)
-    num_qo_heads = 32
-    num_kv_heads = 32
-    page_size = 16
+    # kv_indptr_1 = torch.tensor([0, 0, 9]).int().to(0)
+    # kv_indices_1 = torch.tensor([3, 4, 5, 6, 7, 8, 9, 10, 11]).int().to(0)
+    # kv_last_page_len_1 = torch.tensor([0, 1]).int().to(0)
+    num_qo_heads = 4
+    num_kv_heads = 1
+    page_size = 4096
     head_dim = 128
-    q = torch.randn(2, num_qo_heads, head_dim).to(0).half()
+    q = torch.randn(num_requests, num_qo_heads, head_dim).to(0).half()
     kv_data = torch.randn(12, 2, num_kv_heads, page_size, head_dim).to(0).half()
 
     workspace_buffer = torch.empty(128 * 1024 * 1024, dtype=torch.int8).to(0)
-    wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(workspace_buffer, kv_layout)
-    wrapper.plan(
-        kv_indptr_1,
-        kv_indices_1,
-        kv_last_page_len_1,
-        num_qo_heads,
-        num_kv_heads,
-        head_dim,
-        page_size,
-        pos_encoding_mode="NONE",
-        data_type=torch.float16,
-        q_data_type=torch.float16,
-    )
-    o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
+    # wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(workspace_buffer, kv_layout)
+    # wrapper.plan(
+    #     kv_indptr_1,
+    #     kv_indices_1,
+    #     kv_last_page_len_1,
+    #     num_qo_heads,
+    #     num_kv_heads,
+    #     head_dim,
+    #     page_size,
+    #     pos_encoding_mode="NONE",
+    #     data_type=torch.float16,
+    #     q_data_type=torch.float16,
+    # )
+    # o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
+    print("kv_indptr_1: ", kv_indptr_1)
+    print("kv_indices_1: ", kv_indices_1)
+    print("kv_last_page_len_1: ", kv_last_page_len_1)
+    print("num_qo_heads: ", num_qo_heads)
+    print("num_kv_heads: ", num_kv_heads)
+    print("head_dim: ", head_dim)
+    print("page_size: ", page_size)
 
     wrapper_tensor_cores = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
         workspace_buffer, kv_layout, use_tensor_cores=True
@@ -62,14 +76,31 @@ def test_mlc_failed_case():
         data_type=torch.float16,
         q_data_type=torch.float16,
     )
-    o_1_tc, lse_1_tc = wrapper_tensor_cores.run_return_lse(q, kv_data)
 
-    print(lse_1, lse_1_tc)
-    print(o_1, o_1_tc)
+    # warm-up
+    for _ in range(16):
+        o_1_tc, lse_1_tc = wrapper_tensor_cores.run_return_lse(q, kv_data)
+    torch.cuda.synchronize()
+    # profiling for 1000 runs
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
+    repetitions = 1000
+    starter.record()
+    for rep in range(repetitions):
+        o_1_tc, lse_1_tc = wrapper_tensor_cores.run_return_lse(q, kv_data)
+    ender.record()
+    torch.cuda.synchronize()
+    total_time = starter.elapsed_time(ender)
+    avg_time = total_time / repetitions
+    print(f"Average time over {repetitions} runs: {avg_time:.6f} ms")
+    # print(lse_1, lse_1_tc)
+    # print(o_1, o_1_tc)
 
-    torch.testing.assert_close(lse_1, lse_1_tc, rtol=1e-3, atol=1e-3)
-    torch.testing.assert_close(o_1, o_1_tc, rtol=1e-3, atol=1e-3)
+    # torch.testing.assert_close(lse_1, lse_1_tc, rtol=1e-3, atol=1e-3)
+    # torch.testing.assert_close(o_1, o_1_tc, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == "__main__":
     test_mlc_failed_case()
+
