@@ -979,6 +979,7 @@ class BatchDecodeWithPagedKVCacheWrapper:
         self._num_kv_heads = num_kv_heads
         self._block_tables: Optional[torch.Tensor] = block_tables
         self._max_kv_len: Optional[int] = None
+        print("decode plan, backend: ", self._backend)
 
         if seq_lens is None:
             kv_lens_arr_host = get_seq_lens(indptr_host, last_page_len_host, page_size)
@@ -1329,7 +1330,7 @@ class BatchDecodeWithPagedKVCacheWrapper:
                     self._max_kv_len,
                     sinks,
                 ]
-            print("use tensor cores, self._cached_module paged_run: ", self._cached_module)
+
             self._cached_module.paged_run(*run_args)
         else:
             # trtllm-gen does not need plan info

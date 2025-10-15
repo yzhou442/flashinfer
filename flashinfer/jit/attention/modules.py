@@ -808,6 +808,7 @@ def gen_batch_prefill_module(
     # this is used for fp8 tensor core computation
     # KV-only quant is not influenced by this flag
     fp8_enabled = dtype_q in [torch.float8_e4m3fn, torch.float8_e5m2]
+    # print("gen batch prefill module, backend: ", backend)
 
     if backend == "fa2":
         assert not fp8_enabled, "fp8 tensor core is not supported in fa2 backend"
