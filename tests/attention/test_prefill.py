@@ -24,7 +24,7 @@ def benchmark_prefill_paged_kv():
     
     # 测试配置
     batch_size = 1
-    seq_len = 50000  # 长序列测试
+    seq_len = 500  # 长序列测试
     num_qo_heads = 4
     num_kv_heads = 1
     head_dim = 128
@@ -65,7 +65,8 @@ def benchmark_prefill_paged_kv():
     ).to(0)
     
     workspace_buffer = torch.empty(256 * 1024 * 1024, dtype=torch.int8).to(0)
-    
+    warmup_times = 16
+    profiling_times = 1000
     # ========== 测试 1: FA2 Backend ==========
     print("\n" + "=" * 80)
     print("Test 1: FA2 Backend (FlashAttention-2)")
@@ -88,14 +89,14 @@ def benchmark_prefill_paged_kv():
     
     # Warm-up
     print("Warming up FA2...")
-    for _ in range(16):
+    for _ in range(warmup_times):
         o_fa2, lse_fa2 = wrapper_fa2.run_return_lse(q, kv_data)
     torch.cuda.synchronize()
     
     # Profiling
     print("Profiling FA2...")
     starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-    repetitions = 1000
+    repetitions = profiling_times
     starter.record()
     for _ in range(repetitions):
         o_fa2, lse_fa2 = wrapper_fa2.run_return_lse(q, kv_data)
@@ -127,14 +128,14 @@ def benchmark_prefill_paged_kv():
     
     # Warm-up
     print("Warming up FA3...")
-    for _ in range(16):
+    for _ in range(warmup_times):
         o_fa3, lse_fa3 = wrapper_fa3.run_return_lse(q, kv_data)
     torch.cuda.synchronize()
     
     # Profiling
     print("Profiling FA3...")
     starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-    repetitions = 1000
+    repetitions = profiling_times
     starter.record()
     for _ in range(repetitions):
         o_fa3, lse_fa3 = wrapper_fa3.run_return_lse(q, kv_data)

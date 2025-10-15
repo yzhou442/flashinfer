@@ -787,6 +787,8 @@ inline cudaError_t PrefillPlan(void* float_buffer, size_t float_workspace_size_i
     }
   }
 
+  // printf("cta_tile_q: %d, split_kv: %d\n", cta_tile_q, split_kv);
+
   size_t num_bytes_to_copy = int_allocator.num_allocated_bytes();
   FLASHINFER_CUDA_CALL(cudaMemcpyAsync(int_buffer, page_locked_int_buffer, num_bytes_to_copy,
                                        cudaMemcpyHostToDevice, stream));
@@ -899,16 +901,16 @@ inline cudaError_t PrefillSM90Plan(
 
   std::sort(idx_qo_kv_len_vec.begin(), idx_qo_kv_len_vec.end(),
             [](const auto& a, const auto& b) { return std::get<2>(a) > std::get<2>(b); });
-  int cta_tile_q = 128;
+  int cta_tile_q = 8;
   if (head_dim_vo == 64) {
     cta_tile_q = 192;
   }
 
   int device = 0;
   FLASHINFER_CUDA_CALL(cudaGetDevice(&device));
-  int num_sm90_ctas = 0;
-  FLASHINFER_CUDA_CALL(
-      cudaDeviceGetAttribute(&num_sm90_ctas, cudaDevAttrMultiProcessorCount, device));
+  int num_sm90_ctas = 1;
+  // FLASHINFER_CUDA_CALL(
+  //     cudaDeviceGetAttribute(&num_sm90_ctas, cudaDevAttrMultiProcessorCount, device));
 
   MinHeap cta_cost_heap(num_sm90_ctas);
   std::vector<std::vector<IdType>> cta_qo_tile_indices(num_sm90_ctas, std::vector<IdType>()),
@@ -1009,6 +1011,7 @@ inline cudaError_t PrefillSM90Plan(
   std::copy(head_indices_vec.begin(), head_indices_vec.end(), head_indices_h);
   std::copy(work_indptr_vec.begin(), work_indptr_vec.end(), work_indptr_h);
   std::copy(batch_indices_vec.begin(), batch_indices_vec.end(), batch_indices_h);
+  // printf("sm90 plan, cta_tile_q: %d, num_sm90_ctas.size: %d\n", cta_tile_q, num_sm90_ctas);
 
   size_t num_bytes_to_copy = int_allocator.num_allocated_bytes();
   FLASHINFER_CUDA_CALL(cudaMemcpyAsync(int_buffer, page_locked_int_buffer, num_bytes_to_copy,
