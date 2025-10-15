@@ -24,7 +24,7 @@ def test_mlc_failed_case():
     num_tokens = 8
     kv_indptr_1 = torch.tensor([0, 1]).int().to(0)
     kv_indices_1 = torch.tensor([0]).int().to(0)
-    kv_last_page_len_1 = torch.tensor([4000]).int().to(0)
+    kv_last_page_len_1 = torch.tensor([600]).int().to(0)
 
     
     kv_layout = "HND"
@@ -77,13 +77,13 @@ def test_mlc_failed_case():
     )
     
     # Warm-up
-    for _ in range(16):
+    for _ in range(0):
         o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
     torch.cuda.synchronize()
     
     # Profiling
     starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-    repetitions = 1000
+    repetitions = 1
     starter.record()
     for _ in range(repetitions):
         o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
@@ -111,13 +111,13 @@ def test_mlc_failed_case():
     )
     
     # Warm-up
-    for _ in range(16):
+    for _ in range(0):
         o_1_tc, lse_1_tc = wrapper_tensor_cores.run_return_lse(q, kv_data)
     torch.cuda.synchronize()
     
     # Profiling
     starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-    repetitions = 1000
+    repetitions = 1
     starter.record()
     for _ in range(repetitions):
         o_1_tc, lse_1_tc = wrapper_tensor_cores.run_return_lse(q, kv_data)

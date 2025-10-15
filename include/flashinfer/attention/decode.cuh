@@ -758,6 +758,7 @@ cudaError_t BatchDecodeWithPagedKVCacheDispatched(Params params, typename Params
     constexpr uint32_t num_threads = std::max(128U, bdx * bdy);
     constexpr uint32_t bdz = num_threads / (bdx * bdy);
     constexpr uint32_t tile_size_per_bdx = GROUP_SIZE == 1 ? (sizeof(DTypeKV) == 1 ? 2U : 4U) : 1U;
+    // printf("vec_size: %d, bdx: %d, bdy: %d, bdz: %d, tile_size_per_bdx: %d\n", vec_size, bdx, bdy, bdz, tile_size_per_bdx);
     DISPATCH_COMPUTE_CAP_DECODE_NUM_STAGES_SMEM(compute_capacity, NUM_STAGES_SMEM, {
       const uint32_t smem_size =
           2 * NUM_STAGES_SMEM * tile_size_per_bdx * bdy * bdz * HEAD_DIM * sizeof(DTypeKV) +
@@ -770,6 +771,7 @@ cudaError_t BatchDecodeWithPagedKVCacheDispatched(Params params, typename Params
           cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size));
       dim3 nblks(padded_batch_size, num_kv_heads);
       dim3 nthrs(bdx, bdy, bdz);
+      // printf("nblks.x: %d, nblks.y: %d, nthrs.x: %d, nthrs.y: %d, nthrs.z: %d\n", nblks.x, nblks.y, nthrs.x, nthrs.y, nthrs.z);
 
       // PDL launch config
       cudaLaunchAttribute attribute[1];
