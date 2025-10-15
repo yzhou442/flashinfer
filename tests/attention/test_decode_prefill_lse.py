@@ -24,7 +24,7 @@ def test_mlc_failed_case():
     num_tokens = 8
     kv_indptr_1 = torch.tensor([0, 1]).int().to(0)
     kv_indices_1 = torch.tensor([0]).int().to(0)
-    kv_last_page_len_1 = torch.tensor([501+1]).int().to(0)
+    kv_last_page_len_1 = torch.tensor([4000]).int().to(0)
 
     
     kv_layout = "HND"
@@ -60,7 +60,40 @@ def test_mlc_failed_case():
     print("num_kv_heads: ", num_kv_heads)
     print("head_dim: ", head_dim)
     print("page_size: ", page_size)
+    
+    print("\n=== test 1: not use tensor cores ===")
+    wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(workspace_buffer, kv_layout)
+    wrapper.plan(
+        kv_indptr_1,
+        kv_indices_1,
+        kv_last_page_len_1,
+        num_qo_heads,
+        num_kv_heads,
+        head_dim,
+        page_size,
+        pos_encoding_mode="NONE",
+        data_type=torch.float16,
+        q_data_type=torch.float16,
+    )
+    
+    # Warm-up
+    for _ in range(16):
+        o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
+    torch.cuda.synchronize()
+    
+    # Profiling
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+    repetitions = 1000
+    starter.record()
+    for _ in range(repetitions):
+        o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
+    ender.record()
+    torch.cuda.synchronize()
+    total_time = starter.elapsed_time(ender)
+    avg_time = total_time / repetitions
+    print(f"Average time over {repetitions} runs: {avg_time:.6f} ms")
 
+    print("\n=== test 2: use tensor cores ===")
     wrapper_tensor_cores = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
         workspace_buffer, kv_layout, use_tensor_cores=True
     )
@@ -76,31 +109,31 @@ def test_mlc_failed_case():
         data_type=torch.float16,
         q_data_type=torch.float16,
     )
-
-    # warm-up
+    
+    # Warm-up
     for _ in range(16):
         o_1_tc, lse_1_tc = wrapper_tensor_cores.run_return_lse(q, kv_data)
     torch.cuda.synchronize()
-    # profiling for 1000 runs
-    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
-        enable_timing=True
-    )
+    
+    # Profiling
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
     repetitions = 1000
     starter.record()
-    for rep in range(repetitions):
+    for _ in range(repetitions):
         o_1_tc, lse_1_tc = wrapper_tensor_cores.run_return_lse(q, kv_data)
     ender.record()
     torch.cuda.synchronize()
     total_time = starter.elapsed_time(ender)
     avg_time = total_time / repetitions
     print(f"Average time over {repetitions} runs: {avg_time:.6f} ms")
-    # print(lse_1, lse_1_tc)
-    # print(o_1, o_1_tc)
 
-    # torch.testing.assert_close(lse_1, lse_1_tc, rtol=1e-3, atol=1e-3)
-    # torch.testing.assert_close(o_1, o_1_tc, rtol=1e-3, atol=1e-3)
+    print("lse diff:", torch.abs(lse_1 - lse_1_tc).max().item())
+    print("output diff:", torch.abs(o_1 - o_1_tc).max().item())
+
+    torch.testing.assert_close(lse_1, lse_1_tc, rtol=1e-3, atol=1e-3)
+    torch.testing.assert_close(o_1, o_1_tc, rtol=1e-3, atol=1e-3)
+    print("✅ all tests passed!")
 
 
 if __name__ == "__main__":
     test_mlc_failed_case()
-
