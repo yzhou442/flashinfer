@@ -771,7 +771,7 @@ cudaError_t BatchDecodeWithPagedKVCacheDispatched(Params params, typename Params
           cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size));
       dim3 nblks(padded_batch_size, num_kv_heads);
       dim3 nthrs(bdx, bdy, bdz);
-      // printf("nblks.x: %d, nblks.y: %d, nthrs.x: %d, nthrs.y: %d, nthrs.z: %d\n", nblks.x, nblks.y, nthrs.x, nthrs.y, nthrs.z);
+      // printf("FA2 decode: nblks.x: %d, nblks.y: %d, nthrs.x: %d, nthrs.y: %d, nthrs.z: %d\n", nblks.x, nblks.y, nthrs.x, nthrs.y, nthrs.z);
 
       // PDL launch config
       cudaLaunchAttribute attribute[1];

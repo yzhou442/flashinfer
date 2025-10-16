@@ -208,7 +208,7 @@ def get_batch_decode_jit_module(module_name: str, jit_module: Any):
 @functools.cache
 def get_batch_decode_module(*args):
     uri = get_batch_decode_uri(*args)
-    print("not use tensor cores, get_batch_decode_module: ", get_batch_decode_module)
+    # print("not use tensor cores, get_batch_decode_module: ", get_batch_decode_module)
     mod = gen_batch_decode_module(*args).build_and_load()
     plan_func = mod.plan
     run_func = mod.run
@@ -247,7 +247,7 @@ def get_batch_decode_module(*args):
         rope_scale: float,
         rope_theta: float,
     ) -> None:
-        print("not use tensor cores, run_func: ", run_func)
+        # print("not use tensor cores, run_func: ", run_func)
         run_func(
             float_workspace_buffer,
             int_workspace_buffer,
@@ -1080,7 +1080,7 @@ class BatchDecodeWithPagedKVCacheWrapper:
                     window_left != -1,  # use_sliding_window
                     logits_soft_cap > 0,  # use_logits_soft_cap
                 )
-                print("fa2, not use tensor cores, self._cached_module: ", self._cached_module)
+                # print("fa2, not use tensor cores, self._cached_module: ", self._cached_module)
             self._plan_info = self._cached_module.plan(
                 self._float_workspace_buffer,
                 self._int_workspace_buffer,
@@ -1367,7 +1367,7 @@ class BatchDecodeWithPagedKVCacheWrapper:
                     rope_scale,
                     rope_theta,
                 ]
-            print("not use tensor cores, self._cached_module run: ", self._cached_module)
+            # print("not use tensor cores, self._cached_module run: ", self._cached_module)
 
             self._cached_module.run(*run_args)
         if v_scale is not None:

@@ -159,6 +159,7 @@ struct CollectiveMainloop {
                            Scheduler& scheduler, typename Scheduler::Params const& scheduler_params,
                            typename Scheduler::WorkTileInfo& work_tile_info,
                            BlockCoord const& block_coord, int work_idx) {
+                            printf("in load\n");
     Tensor sQ = make_tensor(make_smem_ptr(shared_storage.smem_q.data()), SmemLayoutQ{});
     Tensor sK = make_tensor(make_smem_ptr(shared_storage.smem_k.data()), SmemLayoutK{});
     Tensor sV = make_tensor(make_smem_ptr(shared_storage.smem_v.data()), SmemLayoutV{});
@@ -225,6 +226,10 @@ struct CollectiveMainloop {
     // TMA store on O first, call TMA multicast load on V, before CTA 1 can finishing TMA store on
     // O.
     shared_storage.barrier_O.wait((work_idx + 1) % 2);
+
+    // if (threadIdx.x == 0) {
+      printf("in producer, threadIdx.x: %d, block_idx: %d, work_idx: %d, swa_begin_kv_tile_idx: %d\n", threadIdx.x, blockIdx.x, work_idx, swa_begin_kv_tile_idx);
+    // }
 
     if (lane_predicate) {
 #pragma unroll 2

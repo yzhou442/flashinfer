@@ -50,6 +50,7 @@ __global__ void __launch_bounds__(Ktraits::NUM_WARPS* cutlass::NumThreadsPerWarp
                              typename CollectiveEpilogue::Params const epilogue_params,
                              CUTE_GRID_CONSTANT
                              typename TileScheduler::Params const scheduler_params) {
+  // printf("in PrefillWithKVCacheKernel, threadIdx.x: %d, blockIdx.x: %d\n", threadIdx.x, blockIdx.x);
   using DTypeQ = typename Ktraits::DTypeQ;
   using DTypeKV = typename Ktraits::DTypeKV;
   using DTypeO = typename Ktraits::DTypeO;
@@ -291,6 +292,7 @@ __global__ void __launch_bounds__(Ktraits::NUM_WARPS* cutlass::NumThreadsPerWarp
 
 template <typename KernelTraits, bool LEFT_SLIDING_WINDOW, bool CAUSAL, typename Params>
 cudaError_t SinglePrefillWithKVCacheKernelTraitsDispatched(Params& params, cudaStream_t stream) {
+  // printf("in SinglePrefillWithKVCacheKernelTraitsDispatched\n");
   using DTypeQ = typename KernelTraits::DTypeQ;
   using DTypeKV = typename KernelTraits::DTypeKV;
   using DTypeO = typename KernelTraits::DTypeO;
@@ -355,6 +357,7 @@ template <typename KernelTraits, bool LEFT_SLIDING_WINDOW, bool CAUSAL,
           bool SAME_SCHEDULE_FOR_ALL_HEADS, typename Params, bool MULTIITEMSCORING = false>
 cudaError_t BatchPrefillWithPagedKVCacheKernelTraitsDispatched(Params& params,
                                                                cudaStream_t stream) {
+  // printf("in BatchPrefillWithPagedKVCacheKernelTraitsDispatched\n");
   using DTypeQ = typename KernelTraits::DTypeQ;
   using DTypeKV = typename KernelTraits::DTypeKV;
   using DTypeO = typename KernelTraits::DTypeO;
@@ -415,9 +418,11 @@ cudaError_t BatchPrefillWithPagedKVCacheKernelTraitsDispatched(Params& params,
   int multiprocessor_count;
   FLASHINFER_CUDA_CALL(
       cudaDeviceGetAttribute(&multiprocessor_count, cudaDevAttrMultiProcessorCount, device));
-  dim3 grid_dims = Scheduler::get_grid_dim(scheduler_args, multiprocessor_count);
+  // dim3 grid_dims = Scheduler::get_grid_dim(scheduler_args, multiprocessor_count);
+  dim3 grid_dims(1, 1, 1);
   static constexpr int ctaSize = KernelTraits::NUM_WARPS * 32;
   dim3 block_dims(ctaSize);
+  // printf("FA3: grid_dims: %d, %d, %d, block_dims: %d, %d, %d\n", grid_dims.x, grid_dims.y, grid_dims.z, block_dims.x, block_dims.y, block_dims.z);
   void* args[] = {&mainloop_params, &epilogue_params, &scheduler_params};
   FLASHINFER_CUDA_CALL(cudaLaunchKernel(kernel, grid_dims, block_dims, args, smem_size, stream));
 
@@ -565,6 +570,7 @@ template <uint32_t HEAD_DIM_QK, uint32_t HEAD_DIM_VO, MaskMode MASK_MODE, bool L
           bool SAME_SCHEDULE_FOR_ALL_HEADS, typename AttentionVariant, typename Params>
 cudaError_t BatchPrefillWithPagedKVCacheDispatched(Params& params, bool enable_pdl,
                                                    cudaStream_t stream) {
+  // printf("in BatchPrefillWithPagedKVCacheDispatched of prefill_sm90.cuh\n");
   static_assert(HEAD_DIM_VO == 64 || HEAD_DIM_VO == 128 || HEAD_DIM_VO == 256);
   if (MASK_MODE == MaskMode::kCustom) {
     return cudaErrorNotSupported;  // Not supported yet.

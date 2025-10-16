@@ -61,37 +61,37 @@ def test_mlc_failed_case():
     print("head_dim: ", head_dim)
     print("page_size: ", page_size)
     
-    # print("\n=== test 1: not use tensor cores ===")
-    # wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(workspace_buffer, kv_layout)
-    # wrapper.plan(
-    #     kv_indptr_1,
-    #     kv_indices_1,
-    #     kv_last_page_len_1,
-    #     num_qo_heads,
-    #     num_kv_heads,
-    #     head_dim,
-    #     page_size,
-    #     pos_encoding_mode="NONE",
-    #     data_type=torch.float16,
-    #     q_data_type=torch.float16,
-    # )
+    print("\n=== test 1: use cuda cores ===")
+    wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(workspace_buffer, kv_layout)
+    wrapper.plan(
+        kv_indptr_1,
+        kv_indices_1,
+        kv_last_page_len_1,
+        num_qo_heads,
+        num_kv_heads,
+        head_dim,
+        page_size,
+        pos_encoding_mode="NONE",
+        data_type=torch.float16,
+        q_data_type=torch.float16,
+    )
     
-    # # Warm-up
-    # for _ in range(16):
-    #     o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
-    # torch.cuda.synchronize()
+    # Warm-up
+    for _ in range(16):
+        o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
+    torch.cuda.synchronize()
     
-    # # Profiling
-    # starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-    # repetitions = 1000
-    # starter.record()
-    # for _ in range(repetitions):
-    #     o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
-    # ender.record()
-    # torch.cuda.synchronize()
-    # total_time = starter.elapsed_time(ender)
-    # avg_time = total_time / repetitions
-    # print(f"Average time over {repetitions} runs: {avg_time:.6f} ms")
+    # Profiling
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+    repetitions = 1000
+    starter.record()
+    for _ in range(repetitions):
+        o_1, lse_1 = wrapper.run_return_lse(q, kv_data)
+    ender.record()
+    torch.cuda.synchronize()
+    total_time = starter.elapsed_time(ender)
+    avg_time = total_time / repetitions
+    print(f"Average time over {repetitions} runs: {avg_time:.6f} ms")
 
     print("\n=== test 2: use tensor cores ===")
     wrapper_tensor_cores = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
@@ -128,39 +128,6 @@ def test_mlc_failed_case():
     print(f"Average time over {repetitions} runs: {avg_time:.6f} ms")
 
 
-    print("\n=== test 3: use fa3 backend ===")
-    wrapper_fa3 = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
-        workspace_buffer, kv_layout, use_tensor_cores=True, backend="fa3"
-    )
-    wrapper_fa3.plan(
-        kv_indptr_1,
-        kv_indices_1,
-        kv_last_page_len_1,
-        num_qo_heads,
-        num_kv_heads,
-        head_dim,
-        page_size,
-        pos_encoding_mode="NONE",
-        data_type=torch.float16,
-        q_data_type=torch.float16,
-    )
-    
-    # Warm-up
-    for _ in range(16):
-        o_1_tc, lse_1_tc = wrapper_fa3.run_return_lse(q, kv_data)
-    torch.cuda.synchronize()
-    
-    # Profiling
-    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-    repetitions = 1000
-    starter.record()
-    for _ in range(repetitions):
-        o_1_tc, lse_1_tc = wrapper_fa3.run_return_lse(q, kv_data)
-    ender.record()
-    torch.cuda.synchronize()
-    total_time = starter.elapsed_time(ender)
-    avg_time = total_time / repetitions
-    print(f"Average time over {repetitions} runs: {avg_time:.6f} ms")
 
     # print("lse diff:", torch.abs(lse_1 - lse_1_tc).max().item())
     # print("output diff:", torch.abs(o_1 - o_1_tc).max().item())

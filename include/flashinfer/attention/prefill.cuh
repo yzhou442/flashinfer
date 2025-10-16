@@ -1578,6 +1578,7 @@ __device__ __forceinline__ void SinglePrefillWithKVCacheDevice(
 template <typename KTraits, typename Params>
 __global__ __launch_bounds__(KTraits::NUM_THREADS) void SinglePrefillWithKVCacheKernel(
     const __grid_constant__ Params params) {
+  printf("in SinglePrefillWithKVCacheKernel\n");
   extern __shared__ uint8_t smem[];
   auto& smem_storage = reinterpret_cast<typename KTraits::SharedStorage&>(smem);
   SinglePrefillWithKVCacheDevice<KTraits>(params, smem_storage);
@@ -2551,6 +2552,7 @@ template <uint32_t CTA_TILE_Q, uint32_t HEAD_DIM_QK, uint32_t HEAD_DIM_VO,
 cudaError_t BatchPrefillWithPagedKVCacheDispatched(Params params, typename Params::DTypeO* tmp_v,
                                                    float* tmp_s, bool enable_pdl,
                                                    cudaStream_t stream) {
+  // printf("in BatchPrefillWithPagedKVCacheDispatched of prefill.cuh\n");
   using DTypeQ = typename Params::DTypeQ;
   using DTypeKV = typename Params::DTypeKV;
   using DTypeO = typename Params::DTypeO;
@@ -2567,8 +2569,11 @@ cudaError_t BatchPrefillWithPagedKVCacheDispatched(Params params, typename Param
     return cudaSuccess;
   }
 
-  dim3 nblks(padded_batch_size, 1, num_kv_heads);
+  // dim3 nblks(padded_batch_size, 1, num_kv_heads);
+  // dim3 nthrs(32, NUM_WARPS_Q, NUM_WARPS_KV);
+  dim3 nblks(1, 1, 1);
   dim3 nthrs(32, NUM_WARPS_Q, NUM_WARPS_KV);
+  // printf("FA2: grid_dims: %d, %d, %d, block_dims: %d, %d, %d\n", nblks.x, nblks.y, nblks.z, nthrs.x, nthrs.y, nthrs.z);
 
   constexpr uint32_t NUM_MMA_D_QK = HEAD_DIM_QK / 16;
   constexpr uint32_t NUM_MMA_D_VO = HEAD_DIM_VO / 16;
